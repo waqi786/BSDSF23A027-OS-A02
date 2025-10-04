@@ -70,11 +70,20 @@ void format_permissions(mode_t mode, char *str) {
     str[10] = '\0';
 }
 
+// Function to get terminal width
+int get_terminal_width() {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+        return 80; // Default width if ioctl fails
+    }
+    return w.ws_col;
+}
+
 // Function for long listing format
-void print_long_format(const char *filename) {
+void print_long_format(const char *filepath, const char *filename) {
     struct stat file_stat;
     
-    if (lstat(filename, &file_stat) == -1) {
+    if (lstat(filepath, &file_stat) == -1) {
         perror("lstat");
         return;
     }
@@ -102,15 +111,6 @@ void print_long_format(const char *filename) {
            get_file_color(filename, file_stat.st_mode),
            filename,
            COLOR_RESET);
-}
-
-// Function to get terminal width
-int get_terminal_width() {
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
-        return 80; // Default width if ioctl fails
-    }
-    return w.ws_col;
 }
 
 // Function for column display (down then across)
@@ -171,12 +171,17 @@ void print_horizontal_format(char **filenames, int count, int max_len) {
     }
 }
 
-// Function to list directory contents
-void list_directory(const char *dirname, int display_mode) {
+// Recursive function to list directory contents
+void list_directory_recursive(const char *dirname, int display_mode, int recursive) {
     DIR *dir = opendir(dirname);
     if (!dir) {
         perror("opendir");
         return;
+    }
+    
+    // Print directory header for recursive mode
+    if (recursive) {
+        printf("\n%s:\n", dirname);
     }
     
     // Read all filenames first
@@ -186,7 +191,7 @@ void list_directory(const char *dirname, int display_mode) {
     
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        // Skip hidden files
+        // Skip hidden files and . / .. directories
         if (entry->d_name[0] == '.') {
             continue;
         }
@@ -214,12 +219,30 @@ void list_directory(const char *dirname, int display_mode) {
     // Display based on mode
     if (display_mode == 1) { // Long format
         for (int i = 0; i < count; i++) {
-            print_long_format(filenames[i]);
+            // Build full path for long format
+            char full_path[1024];
+            snprintf(full_path, sizeof(full_path), "%s/%s", dirname, filenames[i]);
+            print_long_format(full_path, filenames[i]);
         }
     } else if (display_mode == 2) { // Horizontal format
         print_horizontal_format(filenames, count, max_len);
     } else { // Default column format
         print_column_format(filenames, count, max_len);
+    }
+    
+    // Recursive part: process subdirectories
+    if (recursive) {
+        for (int i = 0; i < count; i++) {
+            // Build full path
+            char full_path[1024];
+            snprintf(full_path, sizeof(full_path), "%s/%s", dirname, filenames[i]);
+            
+            // Check if it's a directory
+            struct stat file_stat;
+            if (lstat(full_path, &file_stat) == 0 && S_ISDIR(file_stat.st_mode)) {
+                list_directory_recursive(full_path, display_mode, recursive);
+            }
+        }
     }
     
     // Free allocated memory
@@ -231,10 +254,11 @@ void list_directory(const char *dirname, int display_mode) {
 
 int main(int argc, char *argv[]) {
     int display_mode = 0; // 0=column, 1=long, 2=horizontal
+    int recursive = 0;
     int opt;
     
     // Parse command line options
-    while ((opt = getopt(argc, argv, "lx")) != -1) {
+    while ((opt = getopt(argc, argv, "lxR")) != -1) {
         switch (opt) {
             case 'l':
                 display_mode = 1;
@@ -242,14 +266,17 @@ int main(int argc, char *argv[]) {
             case 'x':
                 display_mode = 2;
                 break;
+            case 'R':
+                recursive = 1;
+                break;
             default:
-                fprintf(stderr, "Usage: %s [-l] [-x]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-l] [-x] [-R]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
     
     // List current directory
-    list_directory(".", display_mode);
+    list_directory_recursive(".", display_mode, recursive);
     
     return 0;
 }

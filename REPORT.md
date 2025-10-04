@@ -14,3 +14,11 @@ st_mode field mein file type aur permissions dono store hote hain. Bitwise opera
 - `(mode & S_IXUSR)` - user execute permission
 
 Macros use karna easier hai: S_ISDIR(mode), S_ISREG(mode), etc.
+
+## Feature 3 Questions:
+
+### 1. "Down then across" columnar format logic
+"Down then across" format mein hum files ko columns mein vertically fill karte hain. Pehle column 1 ko fill karte hain, phir column 2, etc. Simple loop insufficient hai kyunki humein pehle calculate karna padta hai kitne columns aur rows banenge. Phir har row ke liye, har column se ek item print karna padta hai.
+
+### 2. ioctl system call purpose
+ioctl system call terminal ki width detect karne ke liye use hota hai. Fixed-width fallback (80 columns) use karne se program terminal size ke according adjust nahi kar payega. Chote terminal mein files cut ho jayengi, bade terminal mein extra space waste hoga.

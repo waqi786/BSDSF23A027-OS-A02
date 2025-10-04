@@ -40,3 +40,16 @@ Directory entries ko memory mein read karna zaroori hai kyunki sorting ke liye h
 
 ### 2. qsort comparison function purpose
 qsort comparison function ka signature hai: `int compare(const void *a, const void *b)`. Ye const void * pointers leta hai kyunki qsort ko nahi pata hota aap kya data type sort kar rahe hain. Hum pointers ko appropriate type mein cast karke strcmp() use karte hain string comparison ke liye.
+
+
+## Feature 6 Questions:
+
+### 1. ANSI escape codes for colors
+ANSI escape codes special character sequences hain jo terminal ko formatting commands dete hain. Green color ke liye sequence hai: `\033[1;32m` - ye text ko bold green karta hai. Reset ke liye: `\033[0m`. Format: `\033[CODEm` where CODE is the color number.
+
+### 2. Executable file permission bits
+Executable file check karne ke liye hum st_mode field mein in bits check karte hain:
+- Owner execute: `mode & S_IXUSR`
+- Group execute: `mode & S_IXGRP` 
+- Others execute: `mode & S_IXOTH`
+Agar koi bhi execute bit set hai toh file executable hai.

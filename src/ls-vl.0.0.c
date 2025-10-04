@@ -9,6 +9,7 @@
 #include <grp.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 // Function to format permissions
 void format_permissions(mode_t mode, char *str) {
@@ -57,6 +58,36 @@ void print_long_format(const char *filename) {
            filename);
 }
 
+// Function to get terminal width
+int get_terminal_width() {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+        return 80; // Default width if ioctl fails
+    }
+    return w.ws_col;
+}
+
+// Function for column display (down then across)
+void print_column_format(char **filenames, int count, int max_len) {
+    int term_width = get_terminal_width();
+    int col_width = max_len + 2; // Add spacing between columns
+    int num_cols = term_width / col_width;
+    
+    if (num_cols < 1) num_cols = 1;
+    
+    int num_rows = (count + num_cols - 1) / num_cols; // Ceiling division
+    
+    for (int row = 0; row < num_rows; row++) {
+        for (int col = 0; col < num_cols; col++) {
+            int index = row + col * num_rows;
+            if (index < count) {
+                printf("%-*s", col_width, filenames[index]);
+            }
+        }
+        printf("\n");
+    }
+}
+
 // Function to list directory contents
 void list_directory(const char *dirname, int long_format) {
     DIR *dir = opendir(dirname);
@@ -64,6 +95,11 @@ void list_directory(const char *dirname, int long_format) {
         perror("opendir");
         return;
     }
+    
+    // For column display: read all filenames first
+    char **filenames = NULL;
+    int count = 0;
+    int max_len = 0;
     
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
@@ -75,8 +111,29 @@ void list_directory(const char *dirname, int long_format) {
         if (long_format) {
             print_long_format(entry->d_name);
         } else {
-            printf("%s\n", entry->d_name);
+            // Store filename for column display
+            filenames = realloc(filenames, (count + 1) * sizeof(char *));
+            filenames[count] = strdup(entry->d_name);
+            
+            // Update max filename length
+            int len = strlen(entry->d_name);
+            if (len > max_len) {
+                max_len = len;
+            }
+            
+            count++;
         }
+    }
+    
+    // If not long format, print in columns
+    if (!long_format && count > 0) {
+        print_column_format(filenames, count, max_len);
+        
+        // Free allocated memory
+        for (int i = 0; i < count; i++) {
+            free(filenames[i]);
+        }
+        free(filenames);
     }
     
     closedir(dir);

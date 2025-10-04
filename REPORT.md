@@ -53,3 +53,12 @@ Executable file check karne ke liye hum st_mode field mein in bits check karte h
 - Group execute: `mode & S_IXGRP` 
 - Others execute: `mode & S_IXOTH`
 Agar koi bhi execute bit set hai toh file executable hai.
+
+
+## Feature 7 Questions:
+
+### 1. Base case in recursive function
+Recursive function mein "base case" wo condition hoti hai jo recursion ko stop karti hai. ls recursive function mein base case ye hai ki jab current directory mein koi subdirectory nahi bachi jo traverse karni ho. Jab hum . aur .. directories skip kar dete hain aur koi directory nahi bachti, toh recursion automatically stop ho jati hai.
+
+### 2. Importance of full path construction
+Full path construct karna zaroori hai kyunki recursive call mein humein child directory ko access karne ke liye complete path chahiye. Agar hum sirf "subdir" pass karenge, toh program current working directory mein "subdir" dhundhega, jo exist nahi karta. "parent_dir/subdir" pass karna zaroori hai taaki program ko pata ho exact location.

@@ -31,3 +31,12 @@ ioctl system call terminal ki width detect karne ke liye use hota hai. Fixed-wid
 
 ### 2. Display mode management strategy
 Maine ek integer flag `display_mode` use kiya: 0=column, 1=long, 2=horizontal. getopt() loop mein options check hote hain aur flag set ho jata hai. list_directory() function mein ye flag check karke appropriate display function call hota hai.
+
+
+## Feature 5 Questions:
+
+### 1. Why read all entries into memory before sorting?
+Directory entries ko memory mein read karna zaroori hai kyunki sorting ke liye humein sabhi items ek saath compare karne padte hain. Qsort algorithm requires all data to be available in memory. Drawback ye hai ki agar directory mein millions of files hain toh bahut zyada memory use hogi aur program slow ho sakta hai.
+
+### 2. qsort comparison function purpose
+qsort comparison function ka signature hai: `int compare(const void *a, const void *b)`. Ye const void * pointers leta hai kyunki qsort ko nahi pata hota aap kya data type sort kar rahe hain. Hum pointers ko appropriate type mein cast karke strcmp() use karte hain string comparison ke liye.

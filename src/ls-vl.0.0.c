@@ -11,9 +11,48 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+// ANSI color codes
+#define COLOR_RESET   "\033[0m"
+#define COLOR_BLUE    "\033[1;34m"
+#define COLOR_GREEN   "\033[1;32m"
+#define COLOR_RED     "\033[1;31m"
+#define COLOR_PINK    "\033[1;35m"
+#define COLOR_REVERSE "\033[7m"
+
 // Comparison function for qsort
 int compare_strings(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
+}
+
+// Function to get file color based on type and permissions
+const char *get_file_color(const char *filename, mode_t mode) {
+    // Check if it's a directory
+    if (S_ISDIR(mode)) {
+        return COLOR_BLUE;
+    }
+    
+    // Check if it's executable (any of the execute bits set)
+    if ((mode & S_IXUSR) || (mode & S_IXGRP) || (mode & S_IXOTH)) {
+        return COLOR_GREEN;
+    }
+    
+    // Check if it's a symbolic link
+    if (S_ISLNK(mode)) {
+        return COLOR_PINK;
+    }
+    
+    // Check for archive files by extension
+    const char *ext = strrchr(filename, '.');
+    if (ext != NULL) {
+        if (strcmp(ext, ".tar") == 0 || strcmp(ext, ".gz") == 0 || 
+            strcmp(ext, ".zip") == 0 || strcmp(ext, ".tgz") == 0 ||
+            strcmp(ext, ".deb") == 0 || strcmp(ext, ".rpm") == 0) {
+            return COLOR_RED;
+        }
+    }
+    
+    // Default color (no color)
+    return COLOR_RESET;
 }
 
 // Function to format permissions
@@ -53,14 +92,16 @@ void print_long_format(const char *filename) {
     strftime(time_str, sizeof(time_str), "%b %d %H:%M", localtime(&file_stat.st_mtime));
     
     // Print all information
-    printf("%s %2ld %s %s %5ld %s %s\n", 
+    printf("%s %2ld %s %s %5ld %s %s%s%s\n", 
            permissions,
            file_stat.st_nlink,
            pwd ? pwd->pw_name : "unknown",
            grp ? grp->gr_name : "unknown",
            file_stat.st_size,
            time_str,
-           filename);
+           get_file_color(filename, file_stat.st_mode),
+           filename,
+           COLOR_RESET);
 }
 
 // Function to get terminal width
@@ -86,7 +127,13 @@ void print_column_format(char **filenames, int count, int max_len) {
         for (int col = 0; col < num_cols; col++) {
             int index = row + col * num_rows;
             if (index < count) {
-                printf("%-*s", col_width, filenames[index]);
+                struct stat file_stat;
+                if (lstat(filenames[index], &file_stat) == 0) {
+                    const char *color = get_file_color(filenames[index], file_stat.st_mode);
+                    printf("%s%-*s%s", color, col_width, filenames[index], COLOR_RESET);
+                } else {
+                    printf("%-*s", col_width, filenames[index]);
+                }
             }
         }
         printf("\n");
@@ -100,6 +147,13 @@ void print_horizontal_format(char **filenames, int count, int max_len) {
     int current_width = 0;
     
     for (int i = 0; i < count; i++) {
+        struct stat file_stat;
+        const char *color = COLOR_RESET;
+        
+        if (lstat(filenames[i], &file_stat) == 0) {
+            color = get_file_color(filenames[i], file_stat.st_mode);
+        }
+        
         int needed_width = strlen(filenames[i]) + 2;
         
         // Check if we need to go to next line
@@ -108,7 +162,7 @@ void print_horizontal_format(char **filenames, int count, int max_len) {
             current_width = 0;
         }
         
-        printf("%-*s", col_width, filenames[i]);
+        printf("%s%-*s%s", color, col_width, filenames[i], COLOR_RESET);
         current_width += col_width;
     }
     

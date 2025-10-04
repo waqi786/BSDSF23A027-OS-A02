@@ -88,15 +88,39 @@ void print_column_format(char **filenames, int count, int max_len) {
     }
 }
 
+// Function for horizontal display (across)
+void print_horizontal_format(char **filenames, int count, int max_len) {
+    int term_width = get_terminal_width();
+    int col_width = max_len + 2;
+    int current_width = 0;
+    
+    for (int i = 0; i < count; i++) {
+        int needed_width = strlen(filenames[i]) + 2;
+        
+        // Check if we need to go to next line
+        if (current_width + needed_width > term_width && current_width > 0) {
+            printf("\n");
+            current_width = 0;
+        }
+        
+        printf("%-*s", col_width, filenames[i]);
+        current_width += col_width;
+    }
+    
+    if (count > 0) {
+        printf("\n");
+    }
+}
+
 // Function to list directory contents
-void list_directory(const char *dirname, int long_format) {
+void list_directory(const char *dirname, int display_mode) {
     DIR *dir = opendir(dirname);
     if (!dir) {
         perror("opendir");
         return;
     }
     
-    // For column display: read all filenames first
+    // Read all filenames first
     char **filenames = NULL;
     int count = 0;
     int max_len = 0;
@@ -108,55 +132,60 @@ void list_directory(const char *dirname, int long_format) {
             continue;
         }
         
-        if (long_format) {
-            print_long_format(entry->d_name);
-        } else {
-            // Store filename for column display
-            filenames = realloc(filenames, (count + 1) * sizeof(char *));
-            filenames[count] = strdup(entry->d_name);
-            
-            // Update max filename length
-            int len = strlen(entry->d_name);
-            if (len > max_len) {
-                max_len = len;
-            }
-            
-            count++;
-        }
-    }
-    
-    // If not long format, print in columns
-    if (!long_format && count > 0) {
-        print_column_format(filenames, count, max_len);
+        // Store filename
+        filenames = realloc(filenames, (count + 1) * sizeof(char *));
+        filenames[count] = strdup(entry->d_name);
         
-        // Free allocated memory
-        for (int i = 0; i < count; i++) {
-            free(filenames[i]);
+        // Update max filename length
+        int len = strlen(entry->d_name);
+        if (len > max_len) {
+            max_len = len;
         }
-        free(filenames);
+        
+        count++;
     }
     
     closedir(dir);
+    
+    // Display based on mode
+    if (display_mode == 1) { // Long format
+        for (int i = 0; i < count; i++) {
+            print_long_format(filenames[i]);
+        }
+    } else if (display_mode == 2) { // Horizontal format
+        print_horizontal_format(filenames, count, max_len);
+    } else { // Default column format
+        print_column_format(filenames, count, max_len);
+    }
+    
+    // Free allocated memory
+    for (int i = 0; i < count; i++) {
+        free(filenames[i]);
+    }
+    free(filenames);
 }
 
 int main(int argc, char *argv[]) {
-    int long_format = 0;
+    int display_mode = 0; // 0=column, 1=long, 2=horizontal
     int opt;
     
     // Parse command line options
-    while ((opt = getopt(argc, argv, "l")) != -1) {
+    while ((opt = getopt(argc, argv, "lx")) != -1) {
         switch (opt) {
             case 'l':
-                long_format = 1;
+                display_mode = 1;
+                break;
+            case 'x':
+                display_mode = 2;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-l]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-l] [-x]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
     
     // List current directory
-    list_directory(".", long_format);
+    list_directory(".", display_mode);
     
     return 0;
 }

@@ -11,6 +11,11 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+// Comparison function for qsort
+int compare_strings(const void *a, const void *b) {
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
 // Function to format permissions
 void format_permissions(mode_t mode, char *str) {
     str[0] = (S_ISDIR(mode)) ? 'd' : '-';
@@ -146,6 +151,11 @@ void list_directory(const char *dirname, int display_mode) {
     }
     
     closedir(dir);
+    
+    // SORT THE FILENAMES ALPHABETICALLY
+    if (count > 0) {
+        qsort(filenames, count, sizeof(char *), compare_strings);
+    }
     
     // Display based on mode
     if (display_mode == 1) { // Long format
